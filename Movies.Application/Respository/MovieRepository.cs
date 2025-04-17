@@ -30,55 +30,131 @@ public class MovieRepository : IMovieRepository
                                                                     insert into genres (movieId, name)
                                                                     values (@movieId, @name)
                                                                     """, new { MovieId = movie.Id, Name = genre }));
-
             }
         }
-        throw new NotImplementedException();
+        transaction.Commit();
+        return result > 0;
     }
 
-    public Task<Movie?> GetByIdAsync(Guid id)
+    public async Task<Movie?> GetByIdAsync(Guid id)
     {
-        // var movie = _movies.FirstOrDefault(m => m.Id == id);
-        // return Task.FromResult(movie);
-        throw new NotImplementedException();
-    }
- 
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        var movie = await connection.QuerySingleOrDefaultAsync<Movie>(
+            new CommandDefinition("select * from movies where id = @id", new { id }));
+        
+        if (movie is null)
+        {
+            return null;
+        }
+        
+        var genres = await connection.QueryAsync<string>(
+            new CommandDefinition("select name from genres where movieid = @id", new { id }));
 
-    public Task<IEnumerable<Movie>> GetAllAsync()
-    {
-         // return Task.FromResult(_movies.AsEnumerable());
-         throw new NotImplementedException();
+        foreach (var genre in genres)
+        {
+            movie.Genres.Add(genre);
+        }
+        return movie;
+        
     }
 
-    public Task<bool> UpdateAsync(Movie movie)
+    public async Task<Movie?> GetBySlugAsync(string slug)
     {
-        // var movieIndex = _movies.FindIndex(m => m.Id == movie.Id);
-        // if (movieIndex == -1)
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        var movie = await connection.QuerySingleOrDefaultAsync<Movie>(
+            new CommandDefinition("select * from movies where slug = @slug", new { slug }));
+        
+        if (movie is null)
+        {
+            return null;
+        }
+        
+        var genres = await connection.QueryAsync<string>(
+            new CommandDefinition("select name from genres where movieid = @id", new { id = movie.Id }));
+
+        foreach (var genre in genres)
+        {
+            movie.Genres.Add(genre);
+        }
+        return movie;
+    }
+
+    public async Task<IEnumerable<Movie>> GetAllAsync()
+    {
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        var movies = await connection
+            .QueryAsync(new CommandDefinition("""
+            select m.*, string_agg(g.name, ',') as genres 
+            from movies m left join genres g on m.id = g.movieid group by id
+            """));
+
+        return movies.Select(movie => new Movie
+        {
+            Id = movie.id,
+            Title = movie.title,
+            YearOfRelease = movie.yearofrelease,
+            Genres = Enumerable.ToList(movie.genres.Split(','))
+        });
+    }
+
+    public async Task<bool> UpdateAsync(Movie movie)
+    {
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        using var transaction = connection.BeginTransaction();
+
+        await connection.ExecuteAsync(
+            new CommandDefinition("""
+                                  DELETE FROM genres WHERE movieid = @id
+                                  """, new { id = movie.Id }));
+
+        foreach (var genre in movie.Genres)
+        {
+            await connection.ExecuteAsync(
+                new CommandDefinition("""
+                                      INSERT INTO genres (movieid, name) 
+                                      VALUES (@MovieId, @name)
+                                      """, new { MovieId = movie.Id, Name = genre }));
+        }
+
+        var result = await connection.ExecuteAsync(
+            new CommandDefinition("""
+                                  UPDATE movies SET slug = @Slug, title = @Title, yearofrelease = @YearOfRelease
+                                  WHERE id = @Id
+                                  """, movie));
+        
+        transaction.Commit();
+        return result > 0;
+    }
+
+    public async Task<bool> DeleteByIdAsync(Guid id)
+    {
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        using var transaction = connection.BeginTransaction();
+        
+        await connection.ExecuteAsync(
+            new CommandDefinition("DELETE FROM genres WHERE movieid = @id", new { id }));
+        
+        var result = await connection.ExecuteAsync(
+            new CommandDefinition("DELETE FROM movies WHERE id = @id", new { id }));
+        
+        // var genres = await connection.QueryAsync<string>(
+        //     new CommandDefinition("select name from genres where movieid = @id", new { id = movie.Id }));
+        //
+        // foreach (var genre in genres)
         // {
-        //     return Task.FromResult(false);
+        //     movie.Genres.Add(genre);
         // }
-        // _movies[movieIndex] = movie;
-        // return Task.FromResult(true);
-        throw new NotImplementedException();
+        transaction.Commit();
+        return result > 0;
+       
     }
 
-    public Task<bool> DeleteByIdAsync(Guid id)
+    public async Task<bool> ExistByIdAsync(Guid id)
     {
-        // var removedCount =_movies.RemoveAll(m => m.Id == id);
-        // var movieRemoved = removedCount > 0;
-        // return Task.FromResult(movieRemoved); 
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> ExistByIdAsync(Guid id)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Movie?>  GetBySlugAsync(string idOrSlug)
-    {
-        // var movie = _movies.SingleOrDefault(m => m.Slug.Contains(idOrSlug));
-        // return Task.FromResult(movie);
-        throw new NotImplementedException();
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
+        return await connection.ExecuteScalarAsync<bool>(
+            new CommandDefinition("""
+                                  SELECT COUNT(1) FROM movies WHERE id = @id
+                                  """, new { id }));
     }
 }
