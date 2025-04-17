@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Movies.Application.Database;
 using Movies.Application.Respository;
+using Movies.Application.Services;
 
 namespace Movies.Application;
 
@@ -8,7 +9,9 @@ public static class ApplicationServiceCollectionExtensions
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        return services.AddSingleton<IMovieRepository, MovieRepository>();
+        services.AddSingleton<IMovieRepository, MovieRepository>();
+        services.AddSingleton<IMovieService, MovieService>();
+        return services;
     }
 
     public static IServiceCollection AddDatabase(this IServiceCollection services, string connectionString)
