@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Identity.Api.Controller
@@ -11,14 +12,20 @@ namespace Identity.Api.Controller
     [ApiController]
     public class IdentityController : ControllerBase
     {
-        private const string TokenSecret = "TokenSecretTokenSecretTokenSecretTokenSecretTokenSecretToken";
+        private readonly JwtOptions _jwtOptions;
+        
+        public IdentityController(IOptions<JwtOptions> jwtOptions)
+        {
+            _jwtOptions = jwtOptions.Value;
+        }
+        //private const string TokenSecret = "TokenSecretTokenSecretTokenSecretTokenSecretTokenSecretToken";
         private static readonly TimeSpan TimeSpan = TimeSpan.FromMinutes(5);
 
         [HttpPost("[action]")]
         public IActionResult GenerateToken([FromBody] TokenGenerationRequest request)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(TokenSecret);
+            var key = Encoding.UTF8.GetBytes(_jwtOptions.SecretKey);
 
             var claims = new List<Claim>
             {
@@ -46,8 +53,8 @@ namespace Identity.Api.Controller
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.Add(TimeSpan),
-                Issuer = "https://id.gideon.com",
-                Audience = "https://movies.gideon.com",
+                Issuer = _jwtOptions.Issuer,
+                Audience = _jwtOptions.Audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
                     SecurityAlgorithms.HmacSha256Signature)
             };
