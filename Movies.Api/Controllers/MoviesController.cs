@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Movies.Api.Auth;
 using Movies.Api.Mapping;
 using Movies.Application.Services;
 using Movies.Contracts.Request;
@@ -21,9 +22,10 @@ public class MoviesController(IMovieService movieService) : ControllerBase
     [HttpGet(ApiEndPoints.Movies.Get)]
     public async Task<IActionResult> Get([FromRoute] string idOrSlug, CancellationToken cancellationToken)
     {
+        var userId = HttpContext.GetUserId();
         var movie = Guid.TryParse(idOrSlug, out var id) 
-            ? await movieService.GetByIdAsync(id, cancellationToken) 
-            : await movieService.GetBySlugAsync(idOrSlug, cancellationToken);
+            ? await movieService.GetByIdAsync(id, userId, cancellationToken) 
+            : await movieService.GetBySlugAsync(idOrSlug, userId, cancellationToken);
         
         if (movie == null)
         {
@@ -35,8 +37,9 @@ public class MoviesController(IMovieService movieService) : ControllerBase
     [HttpGet(ApiEndPoints.Movies.GetAll)]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-      var movies = await movieService.GetAllAsync(cancellationToken);
-      return Ok(movies.MapToMovieResponse());
+        var userId = HttpContext.GetUserId();
+        var movies = await movieService.GetAllAsync(userId, cancellationToken);
+        return Ok(movies.MapToMovieResponse());
     }
 
     [Authorize(Policy = AuthConstants.TrustedMemberPolicyName)]
@@ -44,8 +47,9 @@ public class MoviesController(IMovieService movieService) : ControllerBase
     public async Task<IActionResult> Update([FromBody] UpdateMovieRequest request, 
         [FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
+        var userId = HttpContext.GetUserId();
         var movie = request.MapToMovie(id);
-        var updatedMovie = await movieService.UpdateAsync(movie, cancellationToken);
+        var updatedMovie = await movieService.UpdateAsync(movie, userId, cancellationToken);
         if (updatedMovie is null)
         {
             return NotFound();

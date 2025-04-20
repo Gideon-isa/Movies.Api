@@ -18,7 +18,7 @@ public class MovieValidator : AbstractValidator<Movie>
 
         RuleFor(m => m.Genres)
             .NotEmpty();
-
+ 
         RuleFor(m => m.Title)
             .NotEmpty();
         
@@ -32,7 +32,7 @@ public class MovieValidator : AbstractValidator<Movie>
 
     private async Task<bool> ValidateSlug(Movie movie, string slug, CancellationToken cancellationToken = default)
     {
-        var existingMovie = await _repository.GetBySlugAsync(slug);
+        var existingMovie = await _repository.GetBySlugAsync(slug, cancellationToken: cancellationToken);
         if (existingMovie is not null)
         {
             return existingMovie!.Id == movie.Id;
