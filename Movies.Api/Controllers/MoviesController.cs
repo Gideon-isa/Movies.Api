@@ -35,10 +35,11 @@ public class MoviesController(IMovieService movieService) : ControllerBase
     }
 
     [HttpGet(ApiEndPoints.Movies.GetAll)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAll([FromQuery] GetAllMovieRequest request, CancellationToken cancellationToken)
     {
         var userId = HttpContext.GetUserId();
-        var movies = await movieService.GetAllAsync(userId, cancellationToken);
+        var options = request.MapToOptions().WithUser(userId);
+        var movies = await movieService.GetAllAsync(options, cancellationToken);
         return Ok(movies.MapToMovieResponse());
     }
 

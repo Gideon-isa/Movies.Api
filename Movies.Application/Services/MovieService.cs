@@ -7,7 +7,8 @@ namespace Movies.Application.Services;
 public class MovieService(
     IMovieRepository movieRepository, 
     IRatingRepository ratingRepository, 
-    IValidator<Movie> movieValidator) : IMovieService
+    IValidator<Movie> movieValidator, 
+    IValidator<GetAllMoviesOptions> optionsValidator) : IMovieService
 {
     
     public async Task<bool> CreateAsync(Movie movie, CancellationToken cancellationToken = default)
@@ -16,19 +17,20 @@ public class MovieService(
         return await movieRepository.CreateAsync(movie, cancellationToken);
     }
 
-    public async Task<Movie?> GetByIdAsync(Guid id, Guid? userid = default, CancellationToken cancellationToken = default)
+    public Task<Movie?> GetByIdAsync(Guid id, Guid? userid = default, CancellationToken cancellationToken = default)
     {
-        return await movieRepository.GetByIdAsync(id, userid, cancellationToken);
+        return movieRepository.GetByIdAsync(id, userid, cancellationToken);
     }
 
-    public async Task<Movie?> GetBySlugAsync(string slug, Guid? userid = default, CancellationToken cancellationToken = default)
+    public Task<Movie?> GetBySlugAsync(string slug, Guid? userid = default, CancellationToken cancellationToken = default)
     {
-        return await movieRepository.GetBySlugAsync(slug, userid, cancellationToken);
+        return movieRepository.GetBySlugAsync(slug, userid, cancellationToken);
     }
 
-    public async Task<IEnumerable<Movie>> GetAllAsync(Guid? userid = default, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Movie>> GetAllAsync(GetAllMoviesOptions options, CancellationToken cancellationToken = default)
     {
-        return await movieRepository.GetAllAsync(userid, cancellationToken);
+        await optionsValidator.ValidateAndThrowAsync(options, cancellationToken);
+        return await movieRepository.GetAllAsync(options, cancellationToken);
     }
 
     public async Task<Movie?> UpdateAsync(Movie movie, Guid? userid = default, CancellationToken cancellationToken = default)
