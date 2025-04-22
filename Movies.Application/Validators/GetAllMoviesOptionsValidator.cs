@@ -6,9 +6,9 @@ namespace Movies.Application.Validators;
 public class GetAllMoviesOptionsValidator : AbstractValidator<GetAllMoviesOptions>
 {
     private static readonly string[] AcceptableSortField =
-    {
+    [
         "title", "yearofrelease"
-    };
+    ];
     public GetAllMoviesOptionsValidator()
     {
         RuleFor(m => m.YearOfRelease)
@@ -17,5 +17,9 @@ public class GetAllMoviesOptionsValidator : AbstractValidator<GetAllMoviesOption
         RuleFor(m => m.SortField)
             .Must(m => m is null || AcceptableSortField.Contains(m, StringComparer.OrdinalIgnoreCase))
             .WithMessage("You can only sort by 'title' or 'yearofrelease'");
+        
+        RuleFor(m => m.PageSize)
+            .InclusiveBetween(1, 25)
+            .WithMessage("You can get between 1 and 25 movies per page");
     }
 }
